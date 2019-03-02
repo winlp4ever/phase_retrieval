@@ -6,10 +6,10 @@ from scipy.linalg import eigh
 from scipy import misc
 from math import pi
 import argparse
+import os
 
 
 modules = [1, -1, 1j, -1j]
-delta = 1.001
 M = 40
 
 
@@ -80,7 +80,6 @@ def main(args):
     ori = np.zeros(shape=(*size, 3))
     for i in range(3):
         x = im[:, :, i] / 255.
-        #x = 4 * x / norm(x)
         x_ = np.reshape(x, -1)
 
         model = Diffraction(x, args.delta)
