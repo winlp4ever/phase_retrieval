@@ -44,19 +44,19 @@ class Diffraction(object):
         h = np.random.choice(modules, size=(L, d))
         return a, h
 
-    def _measure(self, l, k):
+    def _measure(self, l, k, T, *args):
         coef = self.a[k] * self.h[l]
         y = norm(coef.dot(self.x)) ** 2
-        return transform(y) * np.einsum('i, j->ij', coef, np.conj(coef))
+        return T(y, *args) * np.einsum('i, j->ij', coef, np.conj(coef))
 
-    def _process(self):
+    def _process(self, T, *args):
         D = 0
         d1, d2 = self.size
         d = d1 * d2
         print('signal size {} {}'.format(d1, d2))
         for l in range(self.L):
             for k in range(d):
-                D += self._measure(l, k)
+                D += self._measure(l, k, T, *args)
             print('step {}'.format(l), end='\r', flush=True)
         print('\ncompute eigenvector corresponding to largest eigenvalue ...')
         w, v = eigh(D / (self.L * d) + 100 * np.identity(d, dtype=complex)) # 100 * np.identity(d, dtype=complex))
@@ -76,19 +76,23 @@ def main(args):
     im = np.array(im)
     m_x = [np.max(im[:, :, i]) for i in range(3)]
     print(im.shape)
-    #x = np.random.uniform(size=size)
+    avg_corr = 0
     ori = np.zeros(shape=(*size, 3))
+
     for i in range(3):
         x = im[:, :, i] / 255.
         x_ = np.reshape(x, -1)
 
         model = Diffraction(x, args.delta)
-        v = model._process()
+        v = model._process(transform)
         m = max(range(v.shape[1]), key=lambda i: pearson_corr(v[:, i], x_))
-        sol = np.abs(v[:, m].real)
-        print(pearson_corr(sol, x_))
+        sol = np.abs(v[:, m])
+        corr = pearson_corr(sol, x_)
+        print('pearson corr: {}'.format(corr))
+        avg_corr += corr
         ori[:, :, i] = np.reshape(sol / np.max(sol) * m_x[i], size)
 
+    print('avg pearson correlation: {}'.format(avg_corr / 3.))
     img = Image.fromarray(ori.astype('uint8'))
     img = img.resize((400, 400))
     img.show()
